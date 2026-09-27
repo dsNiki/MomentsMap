@@ -1,2 +1,2 @@
-# GeoPhoto
+# MomentsMap
 Nyomkövetés alapú fotóböngésző mobilalkalmazás
