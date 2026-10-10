@@ -3,13 +3,21 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { initDatabase } from '@/db/database';
+
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
-    SplashScreen.hideAsync();
+    initDatabase()
+      .then(() => SplashScreen.hideAsync())
+      .catch(err => {
+        // Az adatbázis inicializálása sikertelen – az app megjelenítéséhez mégis elrejtjük a splash screent
+        SplashScreen.hideAsync();
+        throw err;
+      });
   }, []);
 
   return (
