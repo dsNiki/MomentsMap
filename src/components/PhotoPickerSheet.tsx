@@ -7,21 +7,32 @@ import { usePhotoPicker } from '@/hooks/usePhotoPicker';
 interface PhotoPickerSheetProps {
   visible: boolean;
   onClose: () => void;
+  /** Dialog címe – alapértelmezés: "New Photo" */
+  title?: string;
+  /** Egyedi kezelők (pl. kép cseréje a szerkesztőben); ha nincs megadva, a szerkesztőt nyitja meg */
+  onCamera?: () => Promise<void> | void;
+  onGallery?: () => Promise<void> | void;
 }
 
-export function PhotoPickerSheet({ visible, onClose }: PhotoPickerSheetProps) {
+export function PhotoPickerSheet({
+  visible,
+  onClose,
+  title = 'New Photo',
+  onCamera,
+  onGallery,
+}: PhotoPickerSheetProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme === 'unspecified' ? 'light' : colorScheme];
   const { openCamera, openGallery } = usePhotoPicker();
 
   async function handleCamera() {
     onClose();
-    await openCamera();
+    await (onCamera ?? openCamera)();
   }
 
   async function handleGallery() {
     onClose();
-    await openGallery();
+    await (onGallery ?? openGallery)();
   }
 
   return (
@@ -37,7 +48,7 @@ export function PhotoPickerSheet({ visible, onClose }: PhotoPickerSheetProps) {
         {/* Dialog kártya – megnyomás ne terjedjen az overlay-re */}
         <Pressable style={[styles.dialog, { backgroundColor: colors.background }]}>
           <ThemedText type="subtitle" style={styles.title}>
-            New Photo
+            {title}
           </ThemedText>
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.description}>

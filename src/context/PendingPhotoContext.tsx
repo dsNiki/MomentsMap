@@ -1,9 +1,12 @@
 import { createContext, useContext, useState } from 'react';
 
+import { ExifData } from '@/services/exifService';
+
 export interface PendingPhoto {
   uri: string;
   width: number;
   height: number;
+  exif: ExifData;
 }
 
 interface PendingPhotoContextValue {

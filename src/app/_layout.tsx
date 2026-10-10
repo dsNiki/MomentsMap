@@ -29,7 +29,10 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="map" />
           <Stack.Screen name="list" />
-          <Stack.Screen name="photo/add" options={{ presentation: 'modal' }} />
+          <Stack.Screen
+            name="photo/add"
+            options={{ presentation: 'transparentModal', animation: 'fade' }}
+          />
           <Stack.Screen name="photo/[id]" options={{ presentation: 'card' }} />
         </Stack>
       </PendingPhotoProvider>
