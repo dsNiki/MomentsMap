@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { seedCategories } from '@/db/categoryRepository';
 import { initDatabase } from '@/db/database';
 
 SplashScreen.preventAutoHideAsync();
@@ -12,9 +13,10 @@ export default function RootLayout() {
 
   useEffect(() => {
     initDatabase()
+      .then(() => seedCategories())
       .then(() => SplashScreen.hideAsync())
       .catch(err => {
-        // Az adatbázis inicializálása sikertelen – az app megjelenítéséhez mégis elrejtjük a splash screent
+        // Inicializálási hiba – a splash screent mégis elrejtjük
         SplashScreen.hideAsync();
         throw err;
       });
