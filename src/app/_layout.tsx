@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { PendingPhotoProvider } from '@/context/PendingPhotoContext';
 import { seedCategories } from '@/db/categoryRepository';
 import { initDatabase } from '@/db/database';
 
@@ -16,7 +17,6 @@ export default function RootLayout() {
       .then(() => seedCategories())
       .then(() => SplashScreen.hideAsync())
       .catch(err => {
-        // Inicializálási hiba – a splash screent mégis elrejtjük
         SplashScreen.hideAsync();
         throw err;
       });
@@ -24,13 +24,15 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="map" />
-        <Stack.Screen name="list" />
-        <Stack.Screen name="photo/add" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="photo/[id]" options={{ presentation: 'card' }} />
-      </Stack>
+      <PendingPhotoProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="map" />
+          <Stack.Screen name="list" />
+          <Stack.Screen name="photo/add" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="photo/[id]" options={{ presentation: 'card' }} />
+        </Stack>
+      </PendingPhotoProvider>
     </ThemeProvider>
   );
 }

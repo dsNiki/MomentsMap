@@ -15,7 +15,7 @@ export function ViewToggle() {
   return (
     <View style={[styles.container, { backgroundColor: colors.backgroundElement }]}>
       <Pressable
-        style={[styles.button, isMap && { backgroundColor: colors.background }]}
+        style={[styles.button, isMap && styles.buttonActive]}
         onPress={() => router.replace('/map')}
         accessibilityRole="button"
         accessibilityLabel="Térkép nézet"
@@ -23,14 +23,14 @@ export function ViewToggle() {
       >
         <ThemedText
           type="small"
-          style={[styles.label, { color: isMap ? colors.text : colors.textSecondary }]}
+          style={[styles.label, { color: isMap ? colors.background : colors.text }]}
         >
-          Térkép
+          Map
         </ThemedText>
       </Pressable>
 
       <Pressable
-        style={[styles.button, isList && { backgroundColor: colors.background }]}
+        style={[styles.button, isList && styles.buttonActive]}
         onPress={() => router.replace('/list')}
         accessibilityRole="button"
         accessibilityLabel="Lista nézet"
@@ -38,9 +38,9 @@ export function ViewToggle() {
       >
         <ThemedText
           type="small"
-          style={[styles.label, { color: isList ? colors.text : colors.textSecondary }]}
+          style={[styles.label, { color: isList ? colors.background : colors.text }]}
         >
-          Lista
+          List
         </ThemedText>
       </Pressable>
     </View>
@@ -50,14 +50,17 @@ export function ViewToggle() {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    borderRadius: Spacing.four,
+    borderRadius: Spacing.five,
     padding: Spacing.half,
     gap: Spacing.half,
   },
   button: {
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+    borderRadius: Spacing.five,
+  },
+  buttonActive: {
+    backgroundColor: '#3C3C3E', // sötét aktív pill – light és dark módban is jól néz ki
   },
   label: {
     fontWeight: '600',
