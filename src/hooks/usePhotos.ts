@@ -1,51 +1,42 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 
-import { getAllPhotos } from '@/db/photoRepository';
+import { usePhotoContext } from '@/context/PhotoContext';
 import { Photo } from '@/db/types';
+import { removePhoto as removePhotoRecord } from '@/services/photoService';
 
 interface UsePhotosResult {
   photos: Photo[];
   loading: boolean;
-  /** Igaz, ha a betöltés hibára futott (pl. adatbázis-hiba) */
   failed: boolean;
+  /** Kézi újratöltés az adatbázisból */
+  reload: () => Promise<void>;
+  /** Fotó törlése az adatbázisból és a globális állapotból */
+  deletePhoto: (_id: number) => Promise<void>;
 }
 
 /**
- * A mentett fotók betöltése az adatbázisból.
+ * A fotólista elérése a globális állapotból.
  *
  * A képernyő fókuszba kerülésekor újratölt, így egy új fotó mentése után
  * a lista azonnal friss adatot mutat.
  */
 export function usePhotos(): UsePhotosResult {
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  const { photos, loading, failed, loadPhotos, dispatch } = usePhotoContext();
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-
-      (async () => {
-        try {
-          const rows = await getAllPhotos();
-          if (!cancelled) {
-            setPhotos(rows);
-            setFailed(false);
-          }
-        } catch {
-          if (!cancelled) setFailed(true);
-        } finally {
-          if (!cancelled) setLoading(false);
-        }
-      })();
-
-      // A képernyő elhagyásakor a még futó betöltés eredményét eldobjuk
-      return () => {
-        cancelled = true;
-      };
-    }, []),
+      loadPhotos();
+    }, [loadPhotos]),
   );
 
-  return { photos, loading, failed };
+  const deletePhoto = useCallback(
+    async (id: number) => {
+      await removePhotoRecord(id);
+      dispatch({ type: 'DELETE_PHOTO', id });
+    },
+    [dispatch],
+  );
+
+  return { photos, loading, failed, reload: loadPhotos, deletePhoto };
 }

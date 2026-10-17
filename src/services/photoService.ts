@@ -2,8 +2,9 @@
 
 import { getAllCategories } from '@/db/categoryRepository';
 import { getConnection } from '@/db/database';
-import { insertPhoto } from '@/db/photoRepository';
-import { addTagToPhoto, insertTagIfNotExists } from '@/db/tagRepository';
+import { deletePhoto, getAllPhotos, getPhotoById, insertPhoto } from '@/db/photoRepository';
+import { addTagToPhoto, getTagsForPhoto, insertTagIfNotExists } from '@/db/tagRepository';
+import { Photo } from '@/db/types';
 import { ExifData } from '@/services/exifService';
 
 /** Felhasználónak megjeleníthető validációs hiba */
@@ -85,6 +86,34 @@ export async function savePhoto(input: SavePhotoInput): Promise<number> {
   });
 
   return photoId;
+}
+
+/** Az összes mentett fotó, a legutóbb hozzáadott elöl. */
+export async function getPhotos(): Promise<Photo[]> {
+  return getAllPhotos();
+}
+
+/**
+ * Egy fotó a hozzá tartozó címkékkel együtt – a részletes adatlaphoz.
+ * @returns A fotó, vagy null ha nem létezik.
+ */
+export async function getPhotoDetails(id: number): Promise<Photo | null> {
+  const photo = await getPhotoById(id);
+  if (!photo) return null;
+
+  const tags = await getTagsForPhoto(id);
+  return { ...photo, tags };
+}
+
+/**
+ * Fotórekord törlése.
+ *
+ * A kapcsolódó címkekapcsolatokat az adatbázis ON DELETE CASCADE kezeli.
+ * Az eredeti képfájlt szándékosan nem törli a készülék galériájából
+ * (FK-27, NFK-19).
+ */
+export async function removePhoto(id: number): Promise<void> {
+  await deletePhoto(id);
 }
 
 // --- Segédfüggvények (exportálva az egységtesztekhez) ---
