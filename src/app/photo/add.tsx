@@ -4,10 +4,12 @@ import { useState } from 'react';
 import {
   Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
+  ToastAndroid,
   useColorScheme,
   View,
 } from 'react-native';
@@ -57,9 +59,31 @@ export default function AddPhotoScreen() {
     { backgroundColor: colors.backgroundElement, color: colors.text },
   ];
 
+  /**
+   * Visszatérés a főképernyőre.
+   * Ahonnan a szerkesztő megnyílt (térkép vagy lista), oda tér vissza.
+   * Ha nincs hova visszalépni, a térkép nézetre esik vissza.
+   */
+  function goBackToMain() {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/map');
+    }
+  }
+
+  /** Sikeres mentés visszajelzése – Androidon nem blokkoló toast */
+  function notifySaved() {
+    if (Platform.OS === 'android') {
+      ToastAndroid.show('Fotó elmentve', ToastAndroid.SHORT);
+    } else {
+      Alert.alert('Mentés sikeres', 'A fotó elmentve.');
+    }
+  }
+
   function handleClose() {
     setPendingPhoto(null);
-    router.back();
+    goBackToMain();
   }
 
   /** A beírt koordináták érvényes pontként, vagy null – a térkép kezdő nézetéhez */
@@ -123,7 +147,8 @@ export default function AddPhotoScreen() {
         time,
       });
       setPendingPhoto(null);
-      router.back();
+      notifySaved();
+      goBackToMain();
     } catch (err) {
       // Validációs hiba: konkrét üzenet; egyéb (adatbázis) hiba: általános üzenet (NFK-24)
       let message =

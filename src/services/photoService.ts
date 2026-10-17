@@ -31,6 +31,16 @@ export interface SavePhotoInput {
 
 /**
  * Validálja és elmenti a fotót a hozzá tartozó címkékkel együtt, egy tranzakcióban.
+ *
+ * A rétegek összekapcsolása:
+ * - exifService: a technikai mezők (irány, rekesz, záridő, ISO) az `input.exif`-ből
+ *   jönnek, amit a kép kiválasztásakor olvastunk ki. A hely és az idő a
+ *   szerkesztőfelület mezőiből származik, hogy a felhasználói módosítás felülírja
+ *   az EXIF-értéket.
+ * - photoRepository: a fotórekord beszúrása
+ * - tagRepository: a címkék létrehozása és hozzárendelése
+ * - categoryRepository: a kategória név szerinti feloldása
+ *
  * @returns Az új fotórekord id-je
  * @throws ValidationError ha valamelyik mező érvénytelen
  */
