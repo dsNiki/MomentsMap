@@ -13,16 +13,19 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Coordinate } from '@/components/LocationPicker';
 import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
 import { ThemedText } from '@/components/themed-text';
 import { DEFAULT_CATEGORIES } from '@/constants/categories';
 import { Colors, Spacing } from '@/constants/theme';
+import { useLocationPick } from '@/context/LocationPickContext';
 import { PendingPhoto, usePendingPhoto } from '@/context/PendingPhotoContext';
 import { pickFromCamera, pickFromGallery } from '@/hooks/usePhotoPicker';
 import { savePhoto, ValidationError } from '@/services/photoService';
 
 export default function AddPhotoScreen() {
   const { pendingPhoto, setPendingPhoto } = usePendingPhoto();
+  const { setRequest } = useLocationPick();
 
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme === 'unspecified' ? 'light' : colorScheme];
@@ -57,6 +60,36 @@ export default function AddPhotoScreen() {
   function handleClose() {
     setPendingPhoto(null);
     router.back();
+  }
+
+  /** A beírt koordináták érvényes pontként, vagy null – a térkép kezdő nézetéhez */
+  function currentCoordinate(): Coordinate | null {
+    const lat = Number(latitude.trim().replace(',', '.'));
+    const lon = Number(longitude.trim().replace(',', '.'));
+
+    const valid =
+      latitude.trim() !== '' &&
+      longitude.trim() !== '' &&
+      Number.isFinite(lat) &&
+      Number.isFinite(lon) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lon >= -180 &&
+      lon <= 180;
+
+    return valid ? { latitude: lat, longitude: lon } : null;
+  }
+
+  /** Térképes pontválasztó megnyitása saját képernyőn */
+  function openMapPicker() {
+    setRequest({
+      initial: currentCoordinate(),
+      onPicked: coordinate => {
+        setLatitude(coordinate.latitude.toFixed(6));
+        setLongitude(coordinate.longitude.toFixed(6));
+      },
+    });
+    router.push('/photo/pick-location');
   }
 
   /** Új kép kiválasztása a szerkesztőn belül; a kitöltött szöveges mezők megmaradnak */
@@ -205,9 +238,20 @@ export default function AddPhotoScreen() {
           />
 
           {/* Helyszín */}
-          <ThemedText type="small" themeColor="textSecondary" style={styles.fieldLabel}>
-            Location
-          </ThemedText>
+          <View style={styles.locationHeader}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Location
+            </ThemedText>
+            <Pressable
+              onPress={openMapPicker}
+              accessibilityRole="button"
+              accessibilityLabel="Hely kijelölése térképen"
+            >
+              <ThemedText type="small" style={styles.pickOnMapLabel}>
+                Pick on map
+              </ThemedText>
+            </Pressable>
+          </View>
           <View style={styles.locationRow}>
             <TextInput
               style={[inputStyle, styles.locationInput]}
@@ -409,6 +453,16 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     marginBottom: -Spacing.one,
+  },
+  locationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: -Spacing.one,
+  },
+  pickOnMapLabel: {
+    color: '#208AEF',
+    fontWeight: '600',
   },
   locationRow: {
     flexDirection: 'row',
