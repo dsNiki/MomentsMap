@@ -88,6 +88,13 @@ export default function MapScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <Image
+        source={require('@/assets/images/background_map.png')}
+        style={styles.background}
+        contentFit="cover"
+        pointerEvents="none"
+      />
+
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <TextInput
@@ -97,7 +104,7 @@ export default function MapScreen() {
             ]}
             placeholder="Search..."
             placeholderTextColor={colors.textSecondary}
-            accessibilityLabel="Keresés"
+            accessibilityLabel="Search"
           />
           <ViewToggle />
         </View>
@@ -129,10 +136,10 @@ export default function MapScreen() {
             <View style={styles.emptyOverlay} pointerEvents="box-none">
               <View style={[styles.emptyCard, { backgroundColor: colors.background }]}>
                 <ThemedText type="small" style={styles.emptyTitle}>
-                  Nincs koordinátával rendelkező fénykép
+                  No photos with coordinates
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  Adj hozzá fényképet, vagy adj meg helyet egy mentett fényképnél.
+                  Add a photo, or set a location for a saved photo.
                 </ThemedText>
                 <Pressable
                   style={({ pressed }) => [
@@ -142,10 +149,10 @@ export default function MapScreen() {
                   ]}
                   onPress={() => setPickerVisible(true)}
                   accessibilityRole="button"
-                  accessibilityLabel="Fénykép hozzáadása"
+                  accessibilityLabel="Add photo"
                 >
                   <ThemedText type="small" style={styles.emptyActionLabel}>
-                    Fénykép hozzáadása
+                    Add photo
                   </ThemedText>
                 </Pressable>
               </View>
@@ -157,7 +164,7 @@ export default function MapScreen() {
           <Pressable
             style={[styles.filtersButton, { backgroundColor: colors.backgroundElement }]}
             accessibilityRole="button"
-            accessibilityLabel="Szűrők"
+            accessibilityLabel="Filters"
           >
             <ThemedText type="small">Filters</ThemedText>
           </Pressable>
@@ -166,7 +173,7 @@ export default function MapScreen() {
             style={[styles.cameraButton, { backgroundColor: colors.backgroundElement }]}
             onPress={() => setPickerVisible(true)}
             accessibilityRole="button"
-            accessibilityLabel="Fotó hozzáadása"
+            accessibilityLabel="Add photo"
           >
             <Image
               source={require('@/assets/images/camera_icon.png')}
@@ -186,6 +193,14 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  background: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    opacity: 0.18,
   },
   safeArea: {
     flex: 1,

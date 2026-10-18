@@ -36,6 +36,13 @@ export default function ListScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <Image
+        source={require('@/assets/images/background_for_list.png')}
+        style={styles.background}
+        contentFit="cover"
+        pointerEvents="none"
+      />
+
       <SafeAreaView style={styles.safeArea}>
         {/* Header: Search + Toggle */}
         <View style={styles.header}>
@@ -78,10 +85,9 @@ export default function ListScreen() {
               contentContainerStyle={photos.length === 0 ? styles.emptyContent : styles.gridContent}
               ListEmptyComponent={
                 <EmptyState
-                  icon="🖼️"
-                  title="Még nincs mentett fénykép"
-                  description="Adj hozzá egy fényképet a kamerával vagy a galériából."
-                  actionLabel="Fénykép hozzáadása"
+                  title="No photos yet"
+                  description="Add a photo with the camera or from your gallery."
+                  actionLabel="Add photo"
                   onAction={() => setPickerVisible(true)}
                 />
               }
@@ -124,6 +130,14 @@ export default function ListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  background: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    opacity: 0.18,
   },
   safeArea: {
     flex: 1,
