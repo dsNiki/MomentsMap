@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -12,14 +12,20 @@ import {
 import MapView, { PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ClusterMarker } from '@/components/ClusterMarker';
 import { PhotoMarker } from '@/components/PhotoMarker';
 import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ViewToggle } from '@/components/ViewToggle';
 import { Colors, Spacing } from '@/constants/theme';
-import { Photo } from '@/db/types';
 import { usePhotos } from '@/hooks/usePhotos';
+import {
+  boundsRegion,
+  ClusterMarkerData,
+  locatedPhotos,
+  prepareMarkers,
+} from '@/services/clusterService';
 
 const FALLBACK_REGION: Region = {
   latitude: 47.4979,
@@ -28,28 +34,8 @@ const FALLBACK_REGION: Region = {
   longitudeDelta: 0.2,
 };
 
-function hasCoordinates(photo: Photo): boolean {
-  return photo.latitude != null && photo.longitude != null;
-}
-
-function regionForPhotos(photos: Photo[]): Region {
-  if (photos.length === 0) return FALLBACK_REGION;
-
-  const latitudes = photos.map(p => p.latitude as number);
-  const longitudes = photos.map(p => p.longitude as number);
-
-  const minLat = Math.min(...latitudes);
-  const maxLat = Math.max(...latitudes);
-  const minLon = Math.min(...longitudes);
-  const maxLon = Math.max(...longitudes);
-
-  return {
-    latitude: (minLat + maxLat) / 2,
-    longitude: (minLon + maxLon) / 2,
-    latitudeDelta: Math.max((maxLat - minLat) * 1.5, 0.01),
-    longitudeDelta: Math.max((maxLon - minLon) * 1.5, 0.01),
-  };
-}
+const CLUSTER_ZOOM_PADDING = 2;
+const CLUSTER_ZOOM_MIN_DELTA = 0.002;
 
 export default function MapScreen() {
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -64,7 +50,7 @@ export default function MapScreen() {
   }>();
 
   const { photos, loading, failed } = usePhotos();
-  const geotagged = photos.filter(hasCoordinates);
+  const geotagged = locatedPhotos(photos);
 
   const mapRef = useRef<MapView | null>(null);
   const didFit = useRef(false);
@@ -77,12 +63,26 @@ export default function MapScreen() {
     ? { latitude: focusLat, longitude: focusLon, latitudeDelta: 0.01, longitudeDelta: 0.01 }
     : FALLBACK_REGION;
 
+  const [region, setRegion] = useState<Region>(initialRegion);
+
+  const markers = useMemo(() => prepareMarkers(photos, region), [photos, region]);
+
   useEffect(() => {
     if (hasFocus || didFit.current || geotagged.length === 0) return;
 
     didFit.current = true;
-    mapRef.current?.animateToRegion(regionForPhotos(geotagged), 400);
-  }, [geotagged, hasFocus]);
+    mapRef.current?.animateToRegion(boundsRegion(photos, FALLBACK_REGION), 400);
+  }, [photos, geotagged.length, hasFocus]);
+
+  function handleClusterPress(cluster: ClusterMarkerData) {
+    const target = boundsRegion(
+      cluster.photos,
+      FALLBACK_REGION,
+      CLUSTER_ZOOM_PADDING,
+      CLUSTER_ZOOM_MIN_DELTA,
+    );
+    mapRef.current?.animateToRegion(target, 350);
+  }
 
   const showEmptyOverlay = !loading && !failed && geotagged.length === 0;
 
@@ -115,15 +115,20 @@ export default function MapScreen() {
             style={styles.map}
             provider={PROVIDER_GOOGLE}
             initialRegion={initialRegion}
+            onRegionChangeComplete={setRegion}
           >
-            {geotagged.map(photo => (
-              <PhotoMarker
-                key={photo.id}
-                photo={photo}
-                selected={focusId === String(photo.id)}
-                onPress={() => router.push(`/photo/${photo.id}`)}
-              />
-            ))}
+            {markers.map(marker =>
+              marker.type === 'cluster' ? (
+                <ClusterMarker key={marker.key} cluster={marker} onPress={handleClusterPress} />
+              ) : (
+                <PhotoMarker
+                  key={marker.key}
+                  photo={marker.photo}
+                  selected={focusId === String(marker.photo.id)}
+                  onPress={() => router.push(`/photo/${marker.photo.id}`)}
+                />
+              ),
+            )}
           </MapView>
 
           {loading && (
