@@ -1,12 +1,14 @@
 import { createContext, useContext, useState } from 'react';
 
 import { ExifData } from '@/services/exifService';
+import { Coordinate } from '@/services/locationService';
 
 export interface PendingPhoto {
   uri: string;
   width: number;
   height: number;
   exif: ExifData;
+  deviceLocation: Coordinate | null;
 }
 
 interface PendingPhotoContextValue {

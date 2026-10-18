@@ -25,6 +25,20 @@ import { PendingPhoto, usePendingPhoto } from '@/context/PendingPhotoContext';
 import { pickFromCamera, pickFromGallery } from '@/hooks/usePhotoPicker';
 import { savePhoto, ValidationError } from '@/services/photoService';
 
+function initialCoordinate(photo: PendingPhoto | null, key: 'latitude' | 'longitude'): string {
+  const fromExif = photo?.exif[key];
+  if (fromExif != null) return String(fromExif);
+
+  const fromDevice = photo?.deviceLocation?.[key];
+  return fromDevice != null ? String(fromDevice) : '';
+}
+
+function usesDeviceLocation(photo: PendingPhoto | null): boolean {
+  if (!photo) return false;
+  const missingExif = photo.exif.latitude == null || photo.exif.longitude == null;
+  return missingExif && photo.deviceLocation != null;
+}
+
 export default function AddPhotoScreen() {
   const { pendingPhoto, setPendingPhoto } = usePendingPhoto();
   const { setRequest } = useLocationPick();
@@ -39,12 +53,8 @@ export default function AddPhotoScreen() {
   const [category, setCategory] = useState<string | null>(null);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [description, setDescription] = useState('');
-  const [latitude, setLatitude] = useState(() =>
-    pendingPhoto?.exif.latitude != null ? String(pendingPhoto.exif.latitude) : '',
-  );
-  const [longitude, setLongitude] = useState(() =>
-    pendingPhoto?.exif.longitude != null ? String(pendingPhoto.exif.longitude) : '',
-  );
+  const [latitude, setLatitude] = useState(() => initialCoordinate(pendingPhoto, 'latitude'));
+  const [longitude, setLongitude] = useState(() => initialCoordinate(pendingPhoto, 'longitude'));
   const [time, setTime] = useState(() => pendingPhoto?.exif.createdAt ?? '');
   const [changePickerOpen, setChangePickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -122,9 +132,8 @@ export default function AddPhotoScreen() {
     if (!photo) return; // megszakítva – a régi kép marad
 
     setPendingPhoto(photo);
-    // Az új kép EXIF-adatai felülírják a hely- és időmezőket
-    setLatitude(photo.exif.latitude != null ? String(photo.exif.latitude) : '');
-    setLongitude(photo.exif.longitude != null ? String(photo.exif.longitude) : '');
+    setLatitude(initialCoordinate(photo, 'latitude'));
+    setLongitude(initialCoordinate(photo, 'longitude'));
     setTime(photo.exif.createdAt ?? '');
   }
 
@@ -265,7 +274,7 @@ export default function AddPhotoScreen() {
           {/* Helyszín */}
           <View style={styles.locationHeader}>
             <ThemedText type="small" themeColor="textSecondary">
-              Location
+              {usesDeviceLocation(pendingPhoto) ? 'Location (current position)' : 'Location'}
             </ThemedText>
             <Pressable
               onPress={openMapPicker}

@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { LocationPickProvider } from '@/context/LocationPickContext';
@@ -13,16 +13,22 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const [databaseReady, setDatabaseReady] = useState(false);
 
   useEffect(() => {
     initDatabase()
       .then(() => seedCategories())
-      .then(() => SplashScreen.hideAsync())
-      .catch(err => {
+      .then(() => {
+        setDatabaseReady(true);
         SplashScreen.hideAsync();
-        throw err;
+      })
+      .catch(() => {
+        setDatabaseReady(true);
+        SplashScreen.hideAsync();
       });
   }, []);
+
+  if (!databaseReady) return null;
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

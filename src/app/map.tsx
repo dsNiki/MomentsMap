@@ -63,7 +63,7 @@ export default function MapScreen() {
     longitude?: string;
   }>();
 
-  const { photos, loading } = usePhotos();
+  const { photos, loading, failed } = usePhotos();
   const geotagged = photos.filter(hasCoordinates);
 
   const mapRef = useRef<MapView | null>(null);
@@ -84,7 +84,7 @@ export default function MapScreen() {
     mapRef.current?.animateToRegion(regionForPhotos(geotagged), 400);
   }, [geotagged, hasFocus]);
 
-  const showEmptyOverlay = !loading && geotagged.length === 0;
+  const showEmptyOverlay = !loading && !failed && geotagged.length === 0;
 
   return (
     <ThemedView style={styles.container}>
