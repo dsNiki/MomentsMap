@@ -34,6 +34,11 @@ export default function PhotoDetailScreen() {
 
   const hasCoordinates = photo?.latitude != null && photo?.longitude != null;
 
+  const previewAspectRatio =
+    photo?.width && photo?.height && photo.width > 0 && photo.height > 0
+      ? photo.width / photo.height
+      : 4 / 3;
+
   function handleShowOnMap() {
     if (!photo || !hasCoordinates) return;
 
@@ -116,8 +121,11 @@ export default function PhotoDetailScreen() {
               {/* Nagy előnézet */}
               <Image
                 source={{ uri: photo.uri }}
-                style={[styles.preview, { backgroundColor: colors.backgroundElement }]}
-                contentFit="cover"
+                style={[
+                  styles.preview,
+                  { aspectRatio: previewAspectRatio, backgroundColor: colors.backgroundElement },
+                ]}
+                contentFit="contain"
                 accessibilityLabel={photo.title ?? 'Fénykép'}
               />
 
@@ -284,7 +292,6 @@ const styles = StyleSheet.create({
   },
   preview: {
     width: '100%',
-    aspectRatio: 4 / 3,
     borderRadius: Spacing.two,
   },
   title: {

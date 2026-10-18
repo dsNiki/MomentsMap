@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -167,9 +168,12 @@ export default function MapScreen() {
             accessibilityRole="button"
             accessibilityLabel="Fotó hozzáadása"
           >
-            <ThemedText type="default" style={styles.cameraIcon}>
-              📷
-            </ThemedText>
+            <Image
+              source={require('@/assets/images/camera_icon.png')}
+              style={styles.cameraIcon}
+              contentFit="contain"
+              tintColor={colors.text}
+            />
           </Pressable>
         </View>
       </SafeAreaView>
@@ -272,7 +276,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cameraIcon: {
-    fontSize: 20,
-    lineHeight: 24,
+    width: 24,
+    height: 24,
   },
 });
