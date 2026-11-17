@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/EmptyState';
+import { FilterPanel } from '@/components/FilterPanel';
 import { PhotoGridItem } from '@/components/PhotoGridItem';
 import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
 import { ThemedText } from '@/components/themed-text';
@@ -25,6 +26,7 @@ const COLUMNS = 3;
 
 export default function ListScreen() {
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [filtersVisible, setFiltersVisible] = useState(false);
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme === 'unspecified' ? 'light' : colorScheme];
   const { width } = useWindowDimensions();
@@ -116,10 +118,13 @@ export default function ListScreen() {
         <View style={styles.bottomBar}>
           <Pressable
             style={[styles.filtersButton, { backgroundColor: colors.backgroundElement }]}
+            onPress={() => setFiltersVisible(true)}
             accessibilityRole="button"
-            accessibilityLabel="Szűrők"
+            accessibilityLabel={isFiltering ? 'Szűrők (aktív)' : 'Szűrők'}
           >
             <ThemedText type="small">Filters</ThemedText>
+            {/* Aktív szűrő jelző pont */}
+            {isFiltering && <View style={styles.filtersBadge} />}
           </Pressable>
 
           <Pressable
@@ -139,6 +144,7 @@ export default function ListScreen() {
       </SafeAreaView>
 
       <PhotoPickerSheet visible={pickerVisible} onClose={() => setPickerVisible(false)} />
+      <FilterPanel visible={filtersVisible} onClose={() => setFiltersVisible(false)} />
     </ThemedView>
   );
 }
@@ -212,8 +218,16 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     borderRadius: Spacing.five,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: Spacing.one,
+  },
+  filtersBadge: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E53935',
   },
   cameraButton: {
     width: 44,

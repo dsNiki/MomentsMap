@@ -13,6 +13,7 @@ import MapView, { PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ClusterMarker } from '@/components/ClusterMarker';
+import { FilterPanel } from '@/components/FilterPanel';
 import { PhotoMarker } from '@/components/PhotoMarker';
 import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
 import { ThemedText } from '@/components/themed-text';
@@ -39,6 +40,7 @@ const CLUSTER_ZOOM_MIN_DELTA = 0.002;
 
 export default function MapScreen() {
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [filtersVisible, setFiltersVisible] = useState(false);
 
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme === 'unspecified' ? 'light' : colorScheme];
@@ -177,10 +179,13 @@ export default function MapScreen() {
         <View style={styles.bottomBar}>
           <Pressable
             style={[styles.filtersButton, { backgroundColor: colors.backgroundElement }]}
+            onPress={() => setFiltersVisible(true)}
             accessibilityRole="button"
-            accessibilityLabel="Filters"
+            accessibilityLabel={isFiltering ? 'Filters (active)' : 'Filters'}
           >
             <ThemedText type="small">Filters</ThemedText>
+            {/* Aktív szűrő jelző pont */}
+            {isFiltering && <View style={styles.filtersBadge} />}
           </Pressable>
 
           <Pressable
@@ -200,6 +205,7 @@ export default function MapScreen() {
       </SafeAreaView>
 
       <PhotoPickerSheet visible={pickerVisible} onClose={() => setPickerVisible(false)} />
+      <FilterPanel visible={filtersVisible} onClose={() => setFiltersVisible(false)} />
     </ThemedView>
   );
 }
@@ -294,8 +300,16 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     borderRadius: Spacing.five,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: Spacing.one,
+  },
+  filtersBadge: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E53935',
   },
   cameraButton: {
     width: 44,
