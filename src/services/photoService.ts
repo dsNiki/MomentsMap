@@ -1,13 +1,15 @@
-// photoService – fotókezelés belépési pontja (validálás + mentés több táblába)
-
 import { getAllCategories } from '@/db/categoryRepository';
 import { getConnection } from '@/db/database';
 import { deletePhoto, getAllPhotos, getPhotoById, insertPhoto } from '@/db/photoRepository';
-import { addTagToPhoto, getTagsForPhoto, insertTagIfNotExists } from '@/db/tagRepository';
-import { Photo } from '@/db/types';
+import {
+  addTagToPhoto,
+  getAllPhotoTags,
+  getTagsForPhoto,
+  insertTagIfNotExists,
+} from '@/db/tagRepository';
+import { Photo, Tag } from '@/db/types';
 import { ExifData } from '@/services/exifService';
 
-/** Felhasználónak megjeleníthető validációs hiba */
 export class ValidationError extends Error {
   constructor(message: string) {
     super(message);
@@ -15,7 +17,6 @@ export class ValidationError extends Error {
   }
 }
 
-/** A szerkesztőfelületről érkező nyers adatok (szöveges mezők, ahogy a felhasználó beírta) */
 export interface SavePhotoInput {
   uri: string;
   width: number;
@@ -31,16 +32,6 @@ export interface SavePhotoInput {
 }
 
 /**
- * Validálja és elmenti a fotót a hozzá tartozó címkékkel együtt, egy tranzakcióban.
- *
- * A rétegek összekapcsolása:
- * - exifService: a technikai mezők (irány, rekesz, záridő, ISO) az `input.exif`-ből
- *   jönnek, amit a kép kiválasztásakor olvastunk ki. A hely és az idő a
- *   szerkesztőfelület mezőiből származik, hogy a felhasználói módosítás felülírja
- *   az EXIF-értéket.
- * - photoRepository: a fotórekord beszúrása
- * - tagRepository: a címkék létrehozása és hozzárendelése
- * - categoryRepository: a kategória név szerinti feloldása
  *
  * @returns Az új fotórekord id-je
  * @throws ValidationError ha valamelyik mező érvénytelen
@@ -61,7 +52,6 @@ export async function savePhoto(input: SavePhotoInput): Promise<number> {
   const db = getConnection();
   let photoId = 0;
 
-  // Tranzakció: ha a címkék mentése elszáll, a fotórekord sem marad félkész állapotban
   await db.withTransactionAsync(async () => {
     photoId = await insertPhoto({
       uri: input.uri,
@@ -88,15 +78,23 @@ export async function savePhoto(input: SavePhotoInput): Promise<number> {
   return photoId;
 }
 
-/** Az összes mentett fotó, a legutóbb hozzáadott elöl. */
+/**
+ * Az összes fotó a hozzájuk tartozó címkékkel együtt (a szöveges kereséshez).
+ */
 export async function getPhotos(): Promise<Photo[]> {
-  return getAllPhotos();
+  const [photos, photoTags] = await Promise.all([getAllPhotos(), getAllPhotoTags()]);
+
+  const tagsByPhoto = new Map<number, Tag[]>();
+  for (const { photo_id, id, name } of photoTags) {
+    const list = tagsByPhoto.get(photo_id);
+    if (list) list.push({ id, name });
+    else tagsByPhoto.set(photo_id, [{ id, name }]);
+  }
+
+  return photos.map(photo => ({ ...photo, tags: tagsByPhoto.get(photo.id) ?? [] }));
 }
 
-/**
- * Egy fotó a hozzá tartozó címkékkel együtt – a részletes adatlaphoz.
- * @returns A fotó, vagy null ha nem létezik.
- */
+
 export async function getPhotoDetails(id: number): Promise<Photo | null> {
   const photo = await getPhotoById(id);
   if (!photo) return null;
@@ -105,20 +103,10 @@ export async function getPhotoDetails(id: number): Promise<Photo | null> {
   return { ...photo, tags };
 }
 
-/**
- * Fotórekord törlése.
- *
- * A kapcsolódó címkekapcsolatokat az adatbázis ON DELETE CASCADE kezeli.
- * Az eredeti képfájlt szándékosan nem törli a készülék galériájából
- * (FK-27, NFK-19).
- */
 export async function removePhoto(id: number): Promise<void> {
   await deletePhoto(id);
 }
 
-// --- Segédfüggvények (exportálva az egységtesztekhez) ---
-
-/** Vesszővel elválasztott címkék → egyedi, levágott nevek (kis-nagybetű érzéketlen duplikátumszűrés) */
 export function parseTags(raw: string): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -134,7 +122,6 @@ export function parseTags(raw: string): string[] {
   return result;
 }
 
-/** Üres szöveg → null; érvénytelen vagy tartományon kívüli szám → ValidationError */
 export function parseCoordinate(
   raw: string,
   min: number,
@@ -151,7 +138,6 @@ export function parseCoordinate(
   return value;
 }
 
-/** Üres szöveg → null; érvénytelen dátum → ValidationError */
 export function parseDateTime(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;

@@ -1,11 +1,7 @@
 import { getConnection } from '@/db/database';
 import { Tag } from '@/db/types';
 
-/**
- * Visszaadja a tag id-jét, ha már létezik ilyen névvel;
- * ha nem, létrehozza és az új rekord id-jét adja vissza.
- * A névegyezés kis-nagybetű érzéketlen.
- */
+
 export async function insertTagIfNotExists(name: string): Promise<number> {
   const db = getConnection();
 
@@ -24,9 +20,7 @@ export async function insertTagIfNotExists(name: string): Promise<number> {
   return tag.id;
 }
 
-/**
- * Visszaadja egy fotóhoz tartozó összes címkét.
- */
+
 export async function getTagsForPhoto(photoId: number): Promise<Tag[]> {
   const db = getConnection();
 
@@ -40,11 +34,18 @@ export async function getTagsForPhoto(photoId: number): Promise<Tag[]> {
   );
 }
 
-/**
- * Létrehozza a fotó–tag kapcsolatot.
- * Ha a kapcsolat már létezik, nem dob hibát.
- * Ez garantálja, hogy egy tag nem kerülhet kétszer ugyanahhoz a fotóhoz.
- */
+export async function getAllPhotoTags(): Promise<{ photo_id: number; id: number; name: string }[]> {
+  const db = getConnection();
+
+  return db.getAllAsync<{ photo_id: number; id: number; name: string }>(
+    `SELECT pt.photo_id, t.id, t.name
+     FROM photo_tags pt
+     INNER JOIN tags t ON t.id = pt.tag_id
+     ORDER BY t.name ASC`,
+  );
+}
+
+
 export async function addTagToPhoto(photoId: number, tagId: number): Promise<void> {
   const db = getConnection();
   await db.runAsync(
@@ -54,10 +55,7 @@ export async function addTagToPhoto(photoId: number, tagId: number): Promise<voi
   );
 }
 
-/**
- * Törli a fotó–tag kapcsolatot.
- * Magát a tag rekordot nem érinti.
- */
+
 export async function removeTagFromPhoto(photoId: number, tagId: number): Promise<void> {
   const db = getConnection();
   await db.runAsync('DELETE FROM photo_tags WHERE photo_id = ? AND tag_id = ?', photoId, tagId);
