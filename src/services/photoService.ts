@@ -1,3 +1,5 @@
+import { Directory, File, Paths } from 'expo-file-system';
+
 import { getAllCategories } from '@/db/categoryRepository';
 import { getConnection } from '@/db/database';
 import { deletePhoto, getAllPhotos, getPhotoById, insertPhoto } from '@/db/photoRepository';
@@ -48,39 +50,43 @@ export async function savePhoto(input: SavePhotoInput): Promise<number> {
   const createdAt = parseDateTime(input.time);
   const tagNames = parseTags(input.tags);
   const categoryId = await resolveCategoryId(input.category);
+  const storedUri = persistImage(input.uri);
 
   const db = getConnection();
   let photoId = 0;
 
-  await db.withTransactionAsync(async () => {
-    photoId = await insertPhoto({
-      uri: input.uri,
-      title: emptyToNull(input.title),
-      description: emptyToNull(input.description),
-      created_at: createdAt,
-      latitude,
-      longitude,
-      bearing: input.exif.bearing,
-      width: input.width > 0 ? input.width : null,
-      height: input.height > 0 ? input.height : null,
-      aperture: input.exif.aperture,
-      shutter_speed: input.exif.shutterSpeed,
-      iso: input.exif.iso,
-      category_id: categoryId,
-    });
+  try {
+    await db.withTransactionAsync(async () => {
+      photoId = await insertPhoto({
+        uri: storedUri,
+        title: emptyToNull(input.title),
+        description: emptyToNull(input.description),
+        created_at: createdAt,
+        latitude,
+        longitude,
+        bearing: input.exif.bearing,
+        width: input.width > 0 ? input.width : null,
+        height: input.height > 0 ? input.height : null,
+        aperture: input.exif.aperture,
+        shutter_speed: input.exif.shutterSpeed,
+        iso: input.exif.iso,
+        category_id: categoryId,
+      });
 
-    for (const name of tagNames) {
-      const tagId = await insertTagIfNotExists(name);
-      await addTagToPhoto(photoId, tagId);
-    }
-  });
+      for (const name of tagNames) {
+        const tagId = await insertTagIfNotExists(name);
+        await addTagToPhoto(photoId, tagId);
+      }
+    });
+  } catch (err) {
+    deleteImage(storedUri);
+    throw err;
+  }
 
   return photoId;
 }
 
-/**
- * Az összes fotó a hozzájuk tartozó címkékkel együtt (a szöveges kereséshez).
- */
+
 export async function getPhotos(): Promise<Photo[]> {
   const [photos, photoTags] = await Promise.all([getAllPhotos(), getAllPhotoTags()]);
 
@@ -94,7 +100,6 @@ export async function getPhotos(): Promise<Photo[]> {
   return photos.map(photo => ({ ...photo, tags: tagsByPhoto.get(photo.id) ?? [] }));
 }
 
-
 export async function getPhotoDetails(id: number): Promise<Photo | null> {
   const photo = await getPhotoById(id);
   if (!photo) return null;
@@ -104,7 +109,9 @@ export async function getPhotoDetails(id: number): Promise<Photo | null> {
 }
 
 export async function removePhoto(id: number): Promise<void> {
+  const photo = await getPhotoById(id);
   await deletePhoto(id);
+  if (photo) deleteImage(photo.uri);
 }
 
 export function parseTags(raw: string): string[] {
@@ -157,4 +164,29 @@ async function resolveCategoryId(name: string | null): Promise<number | null> {
 function emptyToNull(value: string): string | null {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+function photoDirectory(): Directory {
+  const dir = new Directory(Paths.document, 'photos');
+  if (!dir.exists) dir.create({ idempotent: true, intermediates: true });
+  return dir;
+}
+
+function persistImage(sourceUri: string): string {
+  const source = new File(sourceUri);
+  const extension = source.extension || '.jpg';
+  const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${extension}`;
+  const target = new File(photoDirectory(), name);
+  source.copySync(target);
+  return target.uri;
+}
+
+function deleteImage(uri: string): void {
+  try {
+    if (!uri.startsWith(photoDirectory().uri)) return;
+    const file = new File(uri);
+    if (file.exists) file.delete();
+  } catch {
+    // A hiányzó vagy már törölt fájl nem hiba
+  }
 }
