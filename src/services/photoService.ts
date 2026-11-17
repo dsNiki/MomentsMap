@@ -2,12 +2,19 @@ import { Directory, File, Paths } from 'expo-file-system';
 
 import { getAllCategories } from '@/db/categoryRepository';
 import { getConnection } from '@/db/database';
-import { deletePhoto, getAllPhotos, getPhotoById, insertPhoto } from '@/db/photoRepository';
+import {
+  deletePhoto,
+  getAllPhotos,
+  getPhotoById,
+  insertPhoto,
+  updatePhoto as updatePhotoRow,
+} from '@/db/photoRepository';
 import {
   addTagToPhoto,
   getAllPhotoTags,
   getTagsForPhoto,
   insertTagIfNotExists,
+  removeTagFromPhoto,
 } from '@/db/tagRepository';
 import { Photo, Tag } from '@/db/types';
 import { ExifData } from '@/services/exifService';
@@ -19,11 +26,7 @@ export class ValidationError extends Error {
   }
 }
 
-export interface SavePhotoInput {
-  uri: string;
-  width: number;
-  height: number;
-  exif: ExifData;
+export interface UpdatePhotoInput {
   title: string;
   description: string;
   category: string | null;
@@ -33,12 +36,25 @@ export interface SavePhotoInput {
   time: string;
 }
 
+export interface SavePhotoInput extends UpdatePhotoInput {
+  uri: string;
+  width: number;
+  height: number;
+  exif: ExifData;
+}
+
+interface ValidatedInput {
+  latitude: number | null;
+  longitude: number | null;
+  createdAt: string | null;
+  tagNames: string[];
+}
+
 /**
- *
- * @returns Az új fotórekord id-je
+ * A mentéshez és a szerkesztéshez egyaránt használt mezővalidáció.
  * @throws ValidationError ha valamelyik mező érvénytelen
  */
-export async function savePhoto(input: SavePhotoInput): Promise<number> {
+function validateInput(input: UpdatePhotoInput): ValidatedInput {
   const latitude = parseCoordinate(input.latitude, -90, 90, 'szélességi fok');
   const longitude = parseCoordinate(input.longitude, -180, 180, 'hosszúsági fok');
 
@@ -47,8 +63,21 @@ export async function savePhoto(input: SavePhotoInput): Promise<number> {
     throw new ValidationError('A helyszínhez a szélességi és a hosszúsági fokot is meg kell adni.');
   }
 
-  const createdAt = parseDateTime(input.time);
-  const tagNames = parseTags(input.tags);
+  return {
+    latitude,
+    longitude,
+    createdAt: parseDateTime(input.time),
+    tagNames: parseTags(input.tags),
+  };
+}
+
+/**
+ *
+ * @returns Az új fotórekord id-je
+ * @throws ValidationError ha valamelyik mező érvénytelen
+ */
+export async function savePhoto(input: SavePhotoInput): Promise<number> {
+  const { latitude, longitude, createdAt, tagNames } = validateInput(input);
   const categoryId = await resolveCategoryId(input.category);
   const storedUri = persistImage(input.uri);
 
@@ -86,6 +115,46 @@ export async function savePhoto(input: SavePhotoInput): Promise<number> {
   return photoId;
 }
 
+/**
+ * Egy meglévő fotó metaadatainak frissítése. A képfájl változatlan marad.
+ * @throws ValidationError ha valamelyik mező érvénytelen
+ */
+export async function updatePhoto(id: number, input: UpdatePhotoInput): Promise<void> {
+  const { latitude, longitude, createdAt, tagNames } = validateInput(input);
+  const categoryId = await resolveCategoryId(input.category);
+
+  const db = getConnection();
+
+  await db.withTransactionAsync(async () => {
+    // A photoRepository.updatePhoto az undefined mezőket kihagyja, így a
+    // törléshez (üres érték) kifejezetten null-t kell átadni.
+    await updatePhotoRow(id, {
+      title: emptyToNull(input.title),
+      description: emptyToNull(input.description),
+      created_at: createdAt,
+      latitude,
+      longitude,
+      category_id: categoryId,
+    });
+
+    const current = await getTagsForPhoto(id);
+    const keep = new Set(tagNames.map(name => name.toLowerCase()));
+    const existing = new Set(current.map(tag => tag.name.toLowerCase()));
+
+    // Csak a tags tábla kapcsolatai változnak, maguk a címkék megmaradnak
+    for (const tag of current) {
+      if (!keep.has(tag.name.toLowerCase())) {
+        await removeTagFromPhoto(id, tag.id);
+      }
+    }
+
+    for (const name of tagNames) {
+      if (existing.has(name.toLowerCase())) continue;
+      const tagId = await insertTagIfNotExists(name);
+      await addTagToPhoto(id, tagId);
+    }
+  });
+}
 
 export async function getPhotos(): Promise<Photo[]> {
   const [photos, photoTags] = await Promise.all([getAllPhotos(), getAllPhotoTags()]);
