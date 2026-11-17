@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Coordinate } from '@/components/LocationPicker';
 import { PhotoPickerSheet } from '@/components/PhotoPickerSheet';
+import { TagInput } from '@/components/TagInput';
 import { ThemedText } from '@/components/themed-text';
 import { DEFAULT_CATEGORIES } from '@/constants/categories';
 import { Colors, Spacing } from '@/constants/theme';
@@ -49,7 +50,7 @@ export default function AddPhotoScreen() {
 
   // Szerkesztőfelület állapota – EXIF adatokkal előtöltve (lazy initial state)
   const [title, setTitle] = useState('');
-  const [tags, setTags] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [category, setCategory] = useState<string | null>(null);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [description, setDescription] = useState('');
@@ -69,11 +70,7 @@ export default function AddPhotoScreen() {
     { backgroundColor: colors.backgroundElement, color: colors.text },
   ];
 
-  /**
-   * Visszatérés a főképernyőre.
-   * Ahonnan a szerkesztő megnyílt (térkép vagy lista), oda tér vissza.
-   * Ha nincs hova visszalépni, a térkép nézetre esik vissza.
-   */
+ 
   function goBackToMain() {
     if (router.canGoBack()) {
       router.back();
@@ -82,7 +79,7 @@ export default function AddPhotoScreen() {
     }
   }
 
-  /** Sikeres mentés visszajelzése – Androidon nem blokkoló toast */
+
   function notifySaved() {
     if (Platform.OS === 'android') {
       ToastAndroid.show('Fotó elmentve', ToastAndroid.SHORT);
@@ -96,7 +93,6 @@ export default function AddPhotoScreen() {
     goBackToMain();
   }
 
-  /** A beírt koordináták érvényes pontként, vagy null – a térkép kezdő nézetéhez */
   function currentCoordinate(): Coordinate | null {
     const lat = Number(latitude.trim().replace(',', '.'));
     const lon = Number(longitude.trim().replace(',', '.'));
@@ -114,7 +110,6 @@ export default function AddPhotoScreen() {
     return valid ? { latitude: lat, longitude: lon } : null;
   }
 
-  /** Térképes pontválasztó megnyitása saját képernyőn */
   function openMapPicker() {
     setRequest({
       initial: currentCoordinate(),
@@ -126,7 +121,6 @@ export default function AddPhotoScreen() {
     router.push('/photo/pick-location');
   }
 
-  /** Új kép kiválasztása a szerkesztőn belül; a kitöltött szöveges mezők megmaradnak */
   async function replacePhoto(pick: () => Promise<PendingPhoto | null>) {
     const photo = await pick();
     if (!photo) return; // megszakítva – a régi kép marad
@@ -150,7 +144,8 @@ export default function AddPhotoScreen() {
         title,
         description,
         category,
-        tags,
+        // A photoService vesszővel tagolt szöveget vár (parseTags)
+        tags: tags.join(','),
         latitude,
         longitude,
         time,
@@ -159,10 +154,8 @@ export default function AddPhotoScreen() {
       notifySaved();
       goBackToMain();
     } catch (err) {
-      // Validációs hiba: konkrét üzenet; egyéb (adatbázis) hiba: általános üzenet (NFK-24)
       let message =
         err instanceof ValidationError ? err.message : 'A fotó mentése nem sikerült. Próbáld újra.';
-      // Fejlesztői buildben a technikai részletet is megmutatjuk a hibakereséshez
       if (__DEV__ && !(err instanceof ValidationError)) {
         message += `\n\n[dev] ${err instanceof Error ? err.message : String(err)}`;
       }
@@ -229,14 +222,7 @@ export default function AddPhotoScreen() {
                 onChangeText={setTitle}
                 accessibilityLabel="Cím"
               />
-              <TextInput
-                style={inputStyle}
-                placeholder="Tags, comma separated..."
-                placeholderTextColor={colors.textSecondary}
-                value={tags}
-                onChangeText={setTags}
-                accessibilityLabel="Címkék"
-              />
+              <TagInput value={tags} onChange={setTags} placeholder="Tags, comma separated..." />
               {/* Kategória lenyíló választó */}
               <Pressable
                 style={[styles.categoryRow, { backgroundColor: colors.backgroundElement }]}

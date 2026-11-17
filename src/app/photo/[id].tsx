@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EmptyState } from '@/components/EmptyState';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -31,6 +32,7 @@ export default function PhotoDetailScreen() {
   const { photo, loading, failed } = usePhotoDetails(photoId);
   const { deletePhoto } = usePhotos();
   const [deleting, setDeleting] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
   const hasCoordinates = photo?.latitude != null && photo?.longitude != null;
 
@@ -56,32 +58,26 @@ export default function PhotoDetailScreen() {
     Alert.alert('Export', 'A metaadat-export még nem elérhető.');
   }
 
-  /** Törlés megerősítéssel (FK-26, NFK-10) */
+  /** Törlés megerősítéssel (FK-26, NFK-10) – a megerősítő dialog megnyitása */
   function handleDelete() {
     if (!photo || deleting) return;
+    setConfirmVisible(true);
+  }
 
-    Alert.alert(
-      'Fotó törlése',
-      'Biztosan törlöd ezt a fényképet? Az eredeti képfájl a galériában megmarad.',
-      [
-        { text: 'Mégse', style: 'cancel' },
-        {
-          text: 'Törlés',
-          style: 'destructive',
-          onPress: async () => {
-            setDeleting(true);
-            try {
-              await deletePhoto(photo.id);
-              router.back();
-            } catch {
-              Alert.alert('Törlés sikertelen', 'A fotó törlése nem sikerült. Próbáld újra.');
-            } finally {
-              setDeleting(false);
-            }
-          },
-        },
-      ],
-    );
+
+  async function confirmDelete() {
+    setConfirmVisible(false);
+    if (!photo || deleting) return;
+
+    setDeleting(true);
+    try {
+      await deletePhoto(photo.id);
+      router.back();
+    } catch {
+      Alert.alert('Törlés sikertelen', 'A fotó törlése nem sikerült. Próbáld újra.');
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -224,11 +220,23 @@ export default function PhotoDetailScreen() {
           </>
         )}
       </SafeAreaView>
+
+      {/* Törlés megerősítése */}
+      <ConfirmDialog
+        visible={confirmVisible}
+        title="Fotó törlése"
+        message="Biztosan törlöd ezt a fényképet? Az eredeti képfájl a galériában megmarad."
+        confirmLabel="Törlés"
+        cancelLabel="Mégse"
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmVisible(false)}
+      />
     </ThemedView>
   );
 }
 
-/** Egy sor a technikai adatok közül, másodlagos színnel */
+
 function MetaText({ children }: { children: React.ReactNode }) {
   return (
     <ThemedText type="small" themeColor="textSecondary">
