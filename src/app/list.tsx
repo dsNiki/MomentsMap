@@ -19,7 +19,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ViewToggle } from '@/components/ViewToggle';
 import { Colors, Spacing } from '@/constants/theme';
-import { usePhotos } from '@/hooks/usePhotos';
+import { useFilters } from '@/hooks/useFilters';
 
 const COLUMNS = 3;
 
@@ -29,7 +29,8 @@ export default function ListScreen() {
   const colors = Colors[colorScheme === 'unspecified' ? 'light' : colorScheme];
   const { width } = useWindowDimensions();
 
-  const { photos, loading, failed } = usePhotos();
+  const { filteredPhotos, loading, failed, query, setQuery, isFiltering, clearFilters } =
+    useFilters();
 
   // Fix elemszélesség, hogy az utolsó, nem teli sor elemei se nyúljanak meg
   const itemSize = (width - 2 * Spacing.three - (COLUMNS - 1) * Spacing.two) / COLUMNS;
@@ -54,6 +55,10 @@ export default function ListScreen() {
             placeholder="Search..."
             placeholderTextColor={colors.textSecondary}
             accessibilityLabel="Keresés"
+            value={query}
+            onChangeText={setQuery}
+            autoCorrect={false}
+            autoCapitalize="none"
           />
           <ViewToggle />
         </View>
@@ -77,19 +82,30 @@ export default function ListScreen() {
             />
           ) : (
             <FlatList
-              data={photos}
+              data={filteredPhotos}
               keyExtractor={item => String(item.id)}
               numColumns={COLUMNS}
               renderItem={({ item }) => <PhotoGridItem photo={item} size={itemSize} />}
               columnWrapperStyle={styles.row}
-              contentContainerStyle={photos.length === 0 ? styles.emptyContent : styles.gridContent}
+              contentContainerStyle={
+                filteredPhotos.length === 0 ? styles.emptyContent : styles.gridContent
+              }
               ListEmptyComponent={
-                <EmptyState
-                  title="No photos yet"
-                  description="Add a photo with the camera or from your gallery."
-                  actionLabel="Add photo"
-                  onAction={() => setPickerVisible(true)}
-                />
+                isFiltering ? (
+                  <EmptyState
+                    title="No matching photos"
+                    description="Nincs a szűrőknek megfelelő fotó. Próbáld módosítani a keresést."
+                    actionLabel="Clear filters"
+                    onAction={clearFilters}
+                  />
+                ) : (
+                  <EmptyState
+                    title="No photos yet"
+                    description="Add a photo with the camera or from your gallery."
+                    actionLabel="Add photo"
+                    onAction={() => setPickerVisible(true)}
+                  />
+                )
               }
               showsVerticalScrollIndicator={false}
             />

@@ -19,7 +19,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ViewToggle } from '@/components/ViewToggle';
 import { Colors, Spacing } from '@/constants/theme';
-import { usePhotos } from '@/hooks/usePhotos';
+import { useFilters } from '@/hooks/useFilters';
 import {
   boundsRegion,
   ClusterMarkerData,
@@ -49,8 +49,9 @@ export default function MapScreen() {
     longitude?: string;
   }>();
 
-  const { photos, loading, failed } = usePhotos();
-  const geotagged = locatedPhotos(photos);
+  const { filteredPhotos, loading, failed, query, setQuery, isFiltering, clearFilters } =
+    useFilters();
+  const geotagged = locatedPhotos(filteredPhotos);
 
   const mapRef = useRef<MapView | null>(null);
   const didFit = useRef(false);
@@ -65,14 +66,14 @@ export default function MapScreen() {
 
   const [region, setRegion] = useState<Region>(initialRegion);
 
-  const markers = useMemo(() => prepareMarkers(photos, region), [photos, region]);
+  const markers = useMemo(() => prepareMarkers(filteredPhotos, region), [filteredPhotos, region]);
 
   useEffect(() => {
     if (hasFocus || didFit.current || geotagged.length === 0) return;
 
     didFit.current = true;
-    mapRef.current?.animateToRegion(boundsRegion(photos, FALLBACK_REGION), 400);
-  }, [photos, geotagged.length, hasFocus]);
+    mapRef.current?.animateToRegion(boundsRegion(filteredPhotos, FALLBACK_REGION), 400);
+  }, [filteredPhotos, geotagged.length, hasFocus]);
 
   function handleClusterPress(cluster: ClusterMarkerData) {
     const target = boundsRegion(
@@ -105,6 +106,10 @@ export default function MapScreen() {
             placeholder="Search..."
             placeholderTextColor={colors.textSecondary}
             accessibilityLabel="Search"
+            value={query}
+            onChangeText={setQuery}
+            autoCorrect={false}
+            autoCapitalize="none"
           />
           <ViewToggle />
         </View>
@@ -141,10 +146,14 @@ export default function MapScreen() {
             <View style={styles.emptyOverlay} pointerEvents="box-none">
               <View style={[styles.emptyCard, { backgroundColor: colors.background }]}>
                 <ThemedText type="small" style={styles.emptyTitle}>
-                  No photos with coordinates
+                  {isFiltering
+                    ? 'No matching photos with coordinates'
+                    : 'No photos with coordinates'}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                  Add a photo, or set a location for a saved photo.
+                  {isFiltering
+                    ? 'No photo matching the current filters has coordinates.'
+                    : 'Add a photo, or set a location for a saved photo.'}
                 </ThemedText>
                 <Pressable
                   style={({ pressed }) => [
@@ -152,12 +161,12 @@ export default function MapScreen() {
                     { backgroundColor: colors.backgroundElement },
                     pressed && styles.pressed,
                   ]}
-                  onPress={() => setPickerVisible(true)}
+                  onPress={isFiltering ? clearFilters : () => setPickerVisible(true)}
                   accessibilityRole="button"
-                  accessibilityLabel="Add photo"
+                  accessibilityLabel={isFiltering ? 'Clear filters' : 'Add photo'}
                 >
                   <ThemedText type="small" style={styles.emptyActionLabel}>
-                    Add photo
+                    {isFiltering ? 'Clear filters' : 'Add photo'}
                   </ThemedText>
                 </Pressable>
               </View>
