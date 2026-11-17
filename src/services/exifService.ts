@@ -1,11 +1,3 @@
-/**
- * exifService – EXIF metaadatok kiolvasása és normalizálása.
- *
- * Az expo-image-picker az `exif: true` opcióval egy nyers EXIF objektumot
- * ad vissza az ImagePickerAsset.exif mezőben. Ez a service azt normalizálja
- * típusbiztos ExifData struktúrává.
- */
-
 export interface ExifData {
   /** Készítési dátum ISO 8601 formátumban, pl. "2024-06-15T14:32:00" – vagy null ha nem érhető el */
   createdAt: string | null;
@@ -23,7 +15,6 @@ export interface ExifData {
   iso: number | null;
 }
 
-/** Üres (minden null) ExifData – ha nincs EXIF vagy hiba történt */
 export const EMPTY_EXIF: ExifData = {
   createdAt: null,
   latitude: null,
@@ -56,12 +47,6 @@ export function readExif(rawExif: Record<string, unknown> | null | undefined): E
   };
 }
 
-// --- Segédfüggvények ---
-
-/**
- * EXIF dátum formátum: "YYYY:MM:DD HH:MM:SS" → ISO 8601 "YYYY-MM-DDTHH:MM:SS"
- * Visszaesési sorrend: DateTimeOriginal → DateTimeDigitized → DateTime
- */
 function parseDateTime(exif: Record<string, unknown>): string | null {
   const raw =
     (exif['DateTimeOriginal'] as string | undefined) ??
@@ -79,9 +64,6 @@ function parseDateTime(exif: Record<string, unknown>): string | null {
   return normalized;
 }
 
-/**
- * GPS szélességi fok: GPSLatitude tömb [fok, perc, másodperc] + GPSLatitudeRef ("N"/"S")
- */
 function parseLatitude(exif: Record<string, unknown>): number | null {
   const coords = exif['GPSLatitude'];
   const ref = exif['GPSLatitudeRef'];
@@ -92,9 +74,6 @@ function parseLatitude(exif: Record<string, unknown>): number | null {
   return ref === 'S' ? -decimal : decimal;
 }
 
-/**
- * GPS hosszúsági fok: GPSLongitude tömb [fok, perc, másodperc] + GPSLongitudeRef ("E"/"W")
- */
 function parseLongitude(exif: Record<string, unknown>): number | null {
   const coords = exif['GPSLongitude'];
   const ref = exif['GPSLongitudeRef'];
@@ -105,10 +84,6 @@ function parseLongitude(exif: Record<string, unknown>): number | null {
   return ref === 'W' ? -decimal : decimal;
 }
 
-/**
- * GPS irányszög: GPSImgDirection (fokban) + GPSImgDirectionRef ("T"=igaz észak / "M"=mágneses)
- * Az alkalmazás az igaz északtól mért szöget tárolja.
- */
 function parseBearing(exif: Record<string, unknown>): number | null {
   const bearing = exif['GPSImgDirection'];
   if (bearing === null || bearing === undefined) return null;
@@ -161,10 +136,6 @@ function parseIso(exif: Record<string, unknown>): number | null {
   return isNaN(parsed) ? null : parsed;
 }
 
-/**
- * DMS (fok, perc, másodperc) → decimális fok konverzió.
- * A tömb elemei lehetnek számok vagy [számláló, nevező] törtpárok.
- */
 function dmsToDecimal(dms: unknown): number | null {
   if (!Array.isArray(dms) || dms.length < 3) return null;
 
