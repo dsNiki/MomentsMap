@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { AreaPickProvider } from '@/context/AreaPickContext';
 import { FilterProvider } from '@/context/FilterContext';
 import { LocationPickProvider } from '@/context/LocationPickContext';
 import { PendingPhotoProvider } from '@/context/PendingPhotoContext';
@@ -37,18 +38,22 @@ export default function RootLayout() {
         <FilterProvider>
           <PendingPhotoProvider>
             <LocationPickProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="index" />
-                <Stack.Screen name="map" />
-                <Stack.Screen name="list" />
-                <Stack.Screen
-                  name="photo/add"
-                  options={{ presentation: 'transparentModal', animation: 'fade' }}
-                />
-                {/* Nem modális: a térkép modál konténerben nem rajzolódik ki Androidon */}
-                <Stack.Screen name="photo/pick-location" options={{ presentation: 'card' }} />
-                <Stack.Screen name="photo/[id]" options={{ presentation: 'card' }} />
-              </Stack>
+              <AreaPickProvider>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="map" />
+                  <Stack.Screen name="list" />
+                  <Stack.Screen
+                    name="photo/add"
+                    options={{ presentation: 'transparentModal', animation: 'fade' }}
+                  />
+                  {/* Nem modális: a térkép modál konténerben nem rajzolódik ki Androidon */}
+                  <Stack.Screen name="photo/pick-location" options={{ presentation: 'card' }} />
+                  {/* Nem modális: a térkép modál konténerben nem rajzolódik ki Androidon */}
+                  <Stack.Screen name="photo/pick-area" options={{ presentation: 'card' }} />
+                  <Stack.Screen name="photo/[id]" options={{ presentation: 'card' }} />
+                </Stack>
+              </AreaPickProvider>
             </LocationPickProvider>
           </PendingPhotoProvider>
         </FilterProvider>

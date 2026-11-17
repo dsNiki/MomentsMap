@@ -1,5 +1,6 @@
-// FilterPanel – alulról felugró szűrőpanel (kategória + dátum intervallum)
+// FilterPanel – alulról felugró szűrőpanel (kategória + dátum intervallum + rádiusz)
 
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   Modal,
@@ -14,9 +15,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
+import { useAreaPick } from '@/context/AreaPickContext';
+import { useLocationPick } from '@/context/LocationPickContext';
 import { getAllCategories } from '@/db/categoryRepository';
 import { Category } from '@/db/types';
 import { useFilters } from '@/hooks/useFilters';
+
+const DEFAULT_RADIUS_M = 500;
+
+const RADIUS_PRESETS: { meters: number; label: string }[] = [
+  { meters: 250, label: '250 m' },
+  { meters: 500, label: '500 m' },
+  { meters: 1000, label: '1 km' },
+  { meters: 5000, label: '5 km' },
+];
 
 export function FilterPanel({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const colorScheme = useColorScheme() ?? 'light';
@@ -29,10 +41,18 @@ export function FilterPanel({ visible, onClose }: { visible: boolean; onClose: (
     dateFrom,
     dateTo,
     setDateRange,
+    radiusCenter,
+    radiusMeters,
+    setRadius,
+    polygon,
+    setPolygon,
     clearFilters,
     isFiltering,
     filteredPhotos,
   } = useFilters();
+
+  const { setRequest } = useLocationPick();
+  const { setRequest: setAreaRequest } = useAreaPick();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const categoriesLoaded = useRef(false);
@@ -59,6 +79,26 @@ export function FilterPanel({ visible, onClose }: { visible: boolean; onClose: (
 
   function handleCategoryPress(id: number) {
     setCategory(categoryId === id ? null : id);
+  }
+
+  function openMapPicker() {
+    onClose();
+
+    setRequest({
+      initial: radiusCenter,
+      onPicked: coordinate => setRadius(coordinate, radiusMeters ?? DEFAULT_RADIUS_M),
+    });
+    router.push('/photo/pick-location');
+  }
+
+  function openAreaPicker() {
+    onClose();
+
+    setAreaRequest({
+      initial: polygon,
+      onPicked: setPolygon,
+    });
+    router.push('/photo/pick-area');
   }
 
   const inputStyle = [
@@ -90,10 +130,8 @@ export function FilterPanel({ visible, onClose }: { visible: boolean; onClose: (
             { backgroundColor: colors.background, paddingBottom: insets.bottom + Spacing.two },
           ]}
         >
-          
           <View style={[styles.handle, { backgroundColor: colors.backgroundSelected }]} />
 
-       
           <View style={styles.header}>
             <ThemedText type="default" themeColor="textSecondary">
               Filters
@@ -175,6 +213,107 @@ export function FilterPanel({ visible, onClose }: { visible: boolean; onClose: (
                 />
               </View>
             </View>
+
+            {/* Helyszín – középpont a térképes pontválasztóval, rádiusz chipekkel */}
+            <ThemedText type="small" themeColor="textSecondary">
+              Location
+            </ThemedText>
+
+            {radiusCenter ? (
+              <ThemedText type="small">
+                {radiusCenter.latitude.toFixed(5)}, {radiusCenter.longitude.toFixed(5)}
+              </ThemedText>
+            ) : (
+              <ThemedText type="small" themeColor="textSecondary">
+                No center selected yet
+              </ThemedText>
+            )}
+
+            <Pressable
+              onPress={openMapPicker}
+              accessibilityRole="button"
+              accessibilityLabel="Középpont kijelölése térképen"
+            >
+              <ThemedText type="small" style={styles.pickOnMapLabel}>
+                Pick center on map
+              </ThemedText>
+            </Pressable>
+
+            {/* Rádiusz csak középponttal együtt értelmes */}
+            {radiusCenter !== null && (
+              <>
+                <View style={styles.chipRow}>
+                  {RADIUS_PRESETS.map(preset => {
+                    const selected = radiusMeters === preset.meters;
+                    return (
+                      <Pressable
+                        key={preset.meters}
+                        style={({ pressed }) => [
+                          styles.chip,
+                          {
+                            backgroundColor: selected
+                              ? colors.backgroundSelected
+                              : colors.backgroundElement,
+                          },
+                          pressed && styles.pressed,
+                        ]}
+                        onPress={() => setRadius(radiusCenter, preset.meters)}
+                        accessibilityRole="button"
+                        accessibilityLabel={preset.label}
+                        accessibilityState={{ selected }}
+                      >
+                        <ThemedText type="small">{preset.label}</ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Pressable
+                  onPress={() => setRadius(null, null)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Helyszűrő törlése"
+                >
+                  <ThemedText type="small" style={styles.pickOnMapLabel}>
+                    Clear location
+                  </ThemedText>
+                </Pressable>
+              </>
+            )}
+
+            {/* Terület – szabadon rajzolt poligon a térképes területválasztóval */}
+            <ThemedText type="small" themeColor="textSecondary">
+              Area
+            </ThemedText>
+
+            {polygon && polygon.length > 0 ? (
+              <ThemedText type="small">Area with {polygon.length} points</ThemedText>
+            ) : (
+              <ThemedText type="small" themeColor="textSecondary">
+                No area selected yet
+              </ThemedText>
+            )}
+
+            <Pressable
+              onPress={openAreaPicker}
+              accessibilityRole="button"
+              accessibilityLabel="Terület kijelölése térképen"
+            >
+              <ThemedText type="small" style={styles.pickOnMapLabel}>
+                Select area on map
+              </ThemedText>
+            </Pressable>
+
+            {polygon !== null && polygon.length > 0 && (
+              <Pressable
+                onPress={() => setPolygon(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Területszűrő törlése"
+              >
+                <ThemedText type="small" style={styles.pickOnMapLabel}>
+                  Clear area
+                </ThemedText>
+              </Pressable>
+            )}
 
             {/* Találatok száma */}
             <ThemedText type="small" themeColor="textSecondary">
@@ -270,6 +409,10 @@ const styles = StyleSheet.create({
   dateRow: {
     flexDirection: 'row',
     gap: Spacing.two,
+  },
+  pickOnMapLabel: {
+    color: '#208AEF',
+    fontWeight: '600',
   },
   dateField: {
     flex: 1,
